@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  STUDYING
+  ACADEMIC_LEAVE
+  EXPELLED
+  NOT_STUDYING
+}
+
+model Student {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fullName     String  @map("full_name")
+  studentId    Int     @unique @map("student_id")
+  email        String  @unique
+  status       Status  @default(STUDYING)
+  refreshToken String? @map("refresh_token")
+  role         Role    @default(USER)
+
+  groupId Int   @map("group_id")
+  group   Group @relation(fields: [groupId], references: [id])
+
+  @@map("students")
+}
+
+model Group {
+  id      Int    @id @default(autoincrement())
+  name    String
+  faculty String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  students Student[]
+
+  @@map("groups")
+}
