@@ -59,7 +59,7 @@ export class AuthService {
       // Проверяем валидность refresh-токена
       const payload = this.jwt.verify(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET
-        });
+      });
       // Ищем пользователя по ID из токена
       const student = await this.prisma.student.findUnique({
         where: { id: payload.sub }

@@ -1,8 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { PrismaService } from '../prisma/prisma.service';
 import { GroupsService} from '../groups/groups.service';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { UpdateStudentStatusDto } from './dto/update-status.dto';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class StudentsService {
@@ -26,12 +28,35 @@ export class StudentsService {
       include: { group: true },
     });
   }
+  async updateStudentStatus(id: number, dto: UpdateStudentStatusDto) {
+    const student = await this.prismaService.student.findUnique({ where: { id } });
+    if (!student) throw new NotFoundException(`Student with ID ${id} not found`);
 
-  findAll(studentId: number, role: string) {
-    if (role === "ADMIN") {
+    return this.prismaService.student.update({
+      where: { id },
+      data: { status: dto.status, updatedAt: new Date() },
+    });
+  }
+
+  async removeStudent(id: number) {
+    const student = await this.prismaService.student.findUnique({ where: { id } });
+    if (!student) throw new NotFoundException(`Student with ID ${id} not found`);
+
+    return this.prismaService.student.delete({ where: { id } });
+  }
+
+
+  findAll(role: Role, studentId?: number) {
+    if (role === Role.ADMIN || role === Role.USER) {
+      // Для админа возвращаем всех студентов
       return this.prismaService.student.findMany({
         include: { group: true },
       });
+    }
+
+    // Для обычного пользователя возвращаем только его запись
+    if (!studentId) {
+      throw new NotFoundException('Student ID is required for non-admin users');
     }
 
     return this.prismaService.student.findMany({
@@ -39,6 +64,7 @@ export class StudentsService {
       include: { group: true },
     });
   }
+
 
   async findOne(id: number) {
     const student = await this.prismaService.student.findUnique({
@@ -79,6 +105,6 @@ export class StudentsService {
     const lastStudent = await this.prismaService.student.findFirst({
       orderBy: { studentId: 'desc' },
     });
-    return lastStudent ? lastStudent.studentId + 1 : 1000;
+    return lastStudent ? lastStudent.studentId + 1 : 1;
   }
 }
