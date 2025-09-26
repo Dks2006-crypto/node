@@ -9,13 +9,14 @@ import {
   Req,
   UseGuards,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { UpdateStudentStatusDto } from './dto/update-status.dto';
 import { UnauthorizedException } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role, Status } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -34,15 +35,24 @@ export class StudentsController {
 
   // Получение всех студентов
   @Get()
-  findAll(@Req() req) {
+  findAll(@Req() req, @Query("status") status?: Status) {
     const { role, studentId } = req.user;
-    return this.studentsService.findAll(role, studentId);
+    return this.studentsService.findAll(role, studentId, status);
   }
 
-  // Получение одного студента по ID
+
+  // 🔹 Получение студентов по конкретному статусу
+  @Get('status/:status')
+  getByStatus(@Req() req, @Param('status') status: Status) {
+    if (!req.user) {
+      throw new UnauthorizedException('User not authenticated');
+    }
+    const { role, studentId } = req.user;
+    return this.studentsService.findAll(role, studentId, status);
+  }
+  // Получение одного студента по IDф
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @Req() req) {
-    // ADMIN видит любого, USER — только себя
     return this.studentsService.findOne(id);
   }
 

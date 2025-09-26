@@ -1,10 +1,10 @@
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
-import { GroupsService} from '../groups/groups.service';
+import { GroupsService } from '../groups/groups.service';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateStudentStatusDto } from './dto/update-status.dto';
-import { Role } from '@prisma/client';
+import { Role, Status } from '@prisma/client';
 
 @Injectable()
 export class StudentsService {
@@ -22,12 +22,13 @@ export class StudentsService {
         email: createStudentDto.email,
         groupId: createStudentDto.groupId,
         studentId: nextStudentId,
-        status: createStudentDto.status || 'STUDYING',
-        role: createStudentDto.role || 'USER',
+        status: createStudentDto.status || Status.STUDYING,
+        role: createStudentDto.role || Role.USER,
       },
       include: { group: true },
     });
   }
+
   async updateStudentStatus(id: number, dto: UpdateStudentStatusDto) {
     const student = await this.prismaService.student.findUnique({ where: { id } });
     if (!student) throw new NotFoundException(`Student with ID ${id} not found`);
@@ -45,26 +46,35 @@ export class StudentsService {
     return this.prismaService.student.delete({ where: { id } });
   }
 
+  async findAll(role: Role, studentId?: number, status?: Status) {
+    const whereCondition: any = {};
 
-  findAll(role: Role, studentId?: number) {
-    if (role === Role.ADMIN || role === Role.USER) {
-      // Для админа возвращаем всех студентов
+    // если есть фильтр по статусу
+    if (status) {
+      whereCondition.status = status;
+    }
+
+    if (role === Role.ADMIN) {
+      // 🔹 Админ видит всех студентов (с фильтром по статусу, если указан)
       return this.prismaService.student.findMany({
+        where: whereCondition,
         include: { group: true },
       });
     }
 
-    // Для обычного пользователя возвращаем только его запись
     if (!studentId) {
       throw new NotFoundException('Student ID is required for non-admin users');
     }
 
+    // 🔹 Обычный пользователь видит только себя (с фильтром по статусу, если он указан)
     return this.prismaService.student.findMany({
-      where: { studentId },
+      where: {
+        ...whereCondition,
+        studentId,
+      },
       include: { group: true },
     });
   }
-
 
   async findOne(id: number) {
     const student = await this.prismaService.student.findUnique({
@@ -86,7 +96,7 @@ export class StudentsService {
         data: updateStudentDto,
         include: { group: true },
       });
-    } catch (error) {
+    } catch {
       throw new NotFoundException(`Student with ID ${id} not found`);
     }
   }
@@ -96,7 +106,7 @@ export class StudentsService {
       return await this.prismaService.student.delete({
         where: { id },
       });
-    } catch (error) {
+    } catch {
       throw new NotFoundException(`Student with ID ${id} not found`);
     }
   }
